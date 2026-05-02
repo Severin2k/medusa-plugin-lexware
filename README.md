@@ -1,23 +1,26 @@
 # medusa-plugin-lexware
 
-Lexware Office invoice integration for Medusa v2. Automatically creates invoices in Lexware Office when orders are placed, manages contacts, downloads invoice PDFs, and sends them to customers via email.
+Lexware Office Rechnungsintegration fuer Medusa v2. Erstellt automatisch Rechnungen in Lexware Office bei Bestellungen, verwaltet Kontakte, haengt Rechnungs-PDFs an Bestaetigungsmails an und synchronisiert Zahlungsstatus per Webhook.
 
 ## Features
 
-- **Automatic Invoice Creation** — Creates a Lexware invoice on every `order.placed` event
-- **Contact Management** — Finds or creates Lexware contacts from Medusa customer data
-- **PDF Delivery** — Downloads invoice PDFs from Lexware and emails them to customers
-- **Admin API** — View invoice status, retry failed invoices, download PDFs
-- **Rate Limiting** — Enforces 1 request/second with exponential backoff on 429 errors
-- **Error Notifications** — Sends email alerts when invoice creation fails
-- **All Payment Methods** — Works with Stripe, PayPal, SEPA, cash, and EC card payments
+- **Automatische Rechnungserstellung** - Rechnung wird bei jeder Bestellung automatisch in Lexware angelegt und finalisiert
+- **Kontaktverwaltung** - Kunden werden automatisch in Lexware gesucht oder angelegt (auch Gastbestellungen)
+- **PDF-Versand** - Rechnungs-PDF wird heruntergeladen und kann an die Bestaetigungsmail angehaengt werden
+- **Zahlungsbedingungen pro Zahlungsmethode** - Sofort faellig, X Tage, Lieferdatum - individuell pro Provider
+- **Gutschriften/Stornierungen** - Volle oder teilweise Erstattung per Credit Note, verknuepft mit Original-Rechnung
+- **Testmodus (Dry Run)** - Rechnungen als Entwurf anlegen ohne zu finalisieren
+- **Webhook** - Zahlungsstatus-Aenderungen aus Lexware werden automatisch synchronisiert
+- **Fehler-Benachrichtigungen** - E-Mail bei fehlgeschlagenen Rechnungen, Warnung vor API-Key-Ablauf
+- **Admin UI** - Komplette Verwaltung ueber die Medusa Admin-Oberflaeche
+- **Verschluesselung** - API Key und SMTP-Passwort werden mit AES-256-GCM in der Datenbank gespeichert
+- **Rate Limiting** - Automatische Drosselung mit Exponential Backoff bei 429/503 Fehlern
 
-## Requirements
+## Voraussetzungen
 
 - Medusa v2 (>= 2.10.0)
 - Node.js >= 20
-- Lexware Office API key
-- SMTP server for sending invoice emails
+- Lexware Office Account mit API-Zugang
 
 ## Installation
 
@@ -25,20 +28,23 @@ Lexware Office invoice integration for Medusa v2. Automatically creates invoices
 npm install medusa-plugin-lexware
 ```
 
-## Configuration
+## Einrichtung
 
-### 1. Environment Variables
+### 1. Umgebungsvariable
 
-Add to your `.env` file:
+Eine einzige Umgebungsvariable wird benoetigt - der Schluessel zur Verschluesselung der API-Zugangsdaten in der Datenbank:
 
 ```env
-LEXWARE_API_KEY=your_lexware_api_key_here
-LEXWARE_NOTIFICATION_EMAIL=info@your-shop.com
+# 32 Bytes als Hex-String generieren:
+# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+LEXWARE_ENCRYPTION_KEY=dein_64_zeichen_hex_string
 ```
 
-### 2. Medusa Configuration
+Alle anderen Einstellungen (API Key, SMTP, Benachrichtigungs-E-Mail) werden ueber die Admin UI konfiguriert.
 
-Add the plugin to your `medusa-config.ts`:
+### 2. Medusa Konfiguration
+
+Plugin in `medusa-config.ts` hinzufuegen:
 
 ```typescript
 import { LEXWARE_MODULE } from "medusa-plugin-lexware"
@@ -46,103 +52,218 @@ import { LEXWARE_MODULE } from "medusa-plugin-lexware"
 export default defineConfig({
   // ...
   modules: [
-    // your other modules...
     {
       resolve: "medusa-plugin-lexware",
       key: LEXWARE_MODULE,
       options: {
-        api_key: process.env.LEXWARE_API_KEY,
-        invoice_on_order: true,
-        payment_term_days: 14,
-        notification_email: process.env.LEXWARE_NOTIFICATION_EMAIL,
+        invoice_on_order: true,   // Rechnung automatisch bei Bestellung erstellen
+        payment_term_days: 14,    // Standard-Zahlungsziel in Tagen
       },
     },
   ],
 })
 ```
 
-### 3. Run Migrations
+### 3. Migrationen ausfuehren
 
 ```bash
 npx medusa db:migrate
 ```
 
-## Configuration Options
+### 4. API Key eintragen
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `api_key` | `string` | **required** | Lexware Office API key (Bearer token) |
-| `invoice_on_order` | `boolean` | `true` | Automatically create invoice on order placement |
-| `payment_term_days` | `number` | `14` | Payment term in days (0 = immediate) |
-| `notification_email` | `string` | — | Email for error notifications |
+1. In Lexware Office einen API Key erstellen: Einstellungen -> Oeffentliche API -> Schluessel erstellen
+2. Im Medusa Admin unter **Lexware** den Key eintragen
+3. "Verbindung testen" klicken
 
-## How It Works
+## Konfigurationsoptionen
 
-When an order is placed:
+| Option | Typ | Standard | Beschreibung |
+|--------|-----|----------|-------------|
+| `invoice_on_order` | `boolean` | `true` | Rechnung automatisch bei `order.placed` erstellen |
+| `payment_term_days` | `number` | `14` | Standard-Zahlungsziel in Tagen (0 = sofort faellig) |
 
-1. **Find/Create Contact** — Checks if customer exists in Lexware (by email), creates if not
-2. **Create Invoice** — Builds invoice with line items, tax (19% MwSt), and payment terms
-3. **Download PDF** — Fetches the finalized invoice PDF from Lexware
-4. **Send Email** — Emails the PDF to the customer as an attachment
-5. **Store Reference** — Saves the Lexware invoice ID for future reference
+## Admin UI
 
-### Payment Terms
+Die komplette Konfiguration erfolgt ueber die Admin-Oberflaeche unter **Lexware**:
 
-- **Cash / EC card** — Immediate payment (0 days)
-- **All other methods** — Configurable via `payment_term_days` (default: 14 days)
+### API-Verbindung
+- API Key eingeben, aendern und testen
+- Ablauf-Countdown (Lexware Keys laufen nach 24 Monaten ab)
+- Webhook fuer Zahlungsstatus einrichten/entfernen
+
+### Rechnungseinstellungen
+- Automatische Rechnungserstellung ein/aus
+- Testmodus (Dry Run) - Rechnungen als Entwurf statt finalisiert
+- Standard-Zahlungsziel in Tagen
+
+### Zahlungsbedingungen
+Pro installierter Zahlungsmethode (Stripe, PayPal, Bar, EC, SEPA etc.) konfigurierbar:
+- **Sofort faellig** - 0 Tage
+- **Tag der Lieferung/Abholung** - Berechnet aus Order-Metadata
+- **X Tage** - 1-14 Tage konfigurierbar
+- **Standard** - Uebernimmt das globale Zahlungsziel
+
+Stripe buendelt Kreditkarte, Apple Pay und Google Pay unter einem Provider - keine separate Konfiguration noetig.
+
+### E-Mail-Benachrichtigungen
+- Empfaenger-Adresse fuer Fehler-Mails
+- SMTP-Konfiguration (Host, Port, Benutzer, Passwort, SSL)
+- Test-E-Mail senden
+- Automatische Warnung 30 Tage vor API-Key-Ablauf (taeglich um 08:00)
+
+### Rechnungsliste
+- Uebersicht aller erstellten Rechnungen mit Status, Rechnungsnummer, Zahlungsstatus
+- Retry-Button bei fehlgeschlagenen Rechnungen
+- Gutschrift-Button pro Rechnung (Komplett-Stornierung oder Teilerstattung)
+
+## Wie es funktioniert
+
+### Rechnungserstellung
+
+Bei jeder Bestellung (`order.placed`):
+
+1. **Kontakt suchen/anlegen** - Kunde wird per E-Mail in Lexware gesucht, bei Bedarf neu angelegt
+2. **Rechnung erstellen** - Positionen mit korrekten MwSt-Saetzen, Zahlungsziel pro Zahlungsmethode
+3. **PDF herunterladen** - Finalisierte Rechnung als PDF von der Lexware API
+4. **Referenz speichern** - Lexware Rechnungs-ID und Rechnungsnummer in der Datenbank
+
+Das PDF kann im `order.placed` Subscriber an die Bestaetigungsmail angehaengt werden:
+
+```typescript
+const lexwareService = container.resolve("lexware") as any
+const result = await lexwareService.processOrderInvoice(orderId, container)
+if (result?.pdfBuffer) {
+  // PDF an E-Mail anhaengen
+}
+```
+
+### Gutschriften
+
+Gutschriften werden ueber den Lexware `/v1/credit-notes` Endpoint erstellt und mit der Original-Rechnung verknuepft. Lexware reduziert das offene Saldo automatisch.
+
+- **Komplett-Stornierung** - Alle Positionen der Original-Rechnung werden uebernommen
+- **Teilerstattung** - Eigene Positionen mit Bezeichnung, Menge, Betrag und MwSt-Satz
+
+### Testmodus (Dry Run)
+
+Im Testmodus werden Rechnungen als Entwurf in Lexware angelegt (nicht finalisiert). So kann geprueft werden ob Positionen, MwSt und Kontaktdaten korrekt sind, ohne echte Rechnungsnummern zu verbrauchen. Entwuerfe koennen in Lexware Office manuell geloescht werden.
+
+### Idempotenz
+
+Jede Order kann nur eine Rechnung haben (Unique Constraint auf `order_id`). Bei gleichzeitigen Events wird nur die erste Rechnung erstellt, weitere Aufrufe werden ignoriert.
+
+### Tax Rate Override
+
+Die MwSt pro Position kann per Callback ueberschrieben werden:
+
+```typescript
+await lexwareService.processOrderInvoice(orderId, container, false, {
+  taxRateOverride: (order, item, defaultRate) => {
+    // Eigene Logik, z.B. reduzierter Satz fuer bestimmte Produkte
+    return defaultRate
+  },
+})
+```
 
 ## Admin API
 
-All endpoints require admin authentication.
+Alle Endpoints erfordern Admin-Authentifizierung.
 
-### List Invoices
-```
-GET /admin/lexware/invoices?status=created&limit=20&offset=0
-```
+### Einstellungen
 
-### Get Invoice Status
 ```
-GET /admin/lexware/invoices/:orderId
-```
-
-### Retry Invoice Creation
-```
-POST /admin/lexware/invoices/:orderId
+GET  /admin/lexware/settings          - Einstellungen abrufen
+POST /admin/lexware/settings          - Einstellungen speichern
+POST /admin/lexware/settings/test     - API-Verbindung testen
+POST /admin/lexware/settings/test-email - Test-E-Mail senden
 ```
 
-### Download Invoice PDF
+### Rechnungen
+
 ```
-GET /admin/lexware/invoices/:orderId/pdf
-```
-
-### Get Customer Contact
-```
-GET /admin/lexware/contacts/:customerId
-```
-
-## Error Handling
-
-- **Rate Limiting** — 1 second pause between every Lexware API call
-- **Retry Logic** — Exponential backoff on 429 errors (1s, 2s, 4s, 8s, 16s — max 5 retries)
-- **Error Notifications** — Sends email to `notification_email` on persistent failures
-- **Data Safety** — Lexware IDs only stored after confirmed API success (HTTP 200/201)
-
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Run tests
-npm test
-
-# Lint
-npm run lint
-
-# Build
-npm run build
+GET  /admin/lexware/invoices              - Liste aller Rechnungen
+GET  /admin/lexware/invoices/:orderId     - Rechnung fuer eine Bestellung
+POST /admin/lexware/invoices/:orderId     - Rechnungserstellung erneut versuchen
+GET  /admin/lexware/invoices/:orderId/pdf - Rechnungs-PDF herunterladen
 ```
 
-## License
+### Gutschriften
 
-MIT
+```
+GET  /admin/lexware/credit-notes          - Liste aller Gutschriften
+POST /admin/lexware/credit-notes          - Gutschrift erstellen
+GET  /admin/lexware/credit-notes/:id/pdf  - Gutschrift-PDF herunterladen
+```
+
+Gutschrift erstellen:
+```json
+{
+  "order_id": "order_01ABC...",
+  "items": [
+    {
+      "name": "Artikelname",
+      "quantity": 1,
+      "grossAmount": 35.00,
+      "taxRatePercentage": 19
+    }
+  ]
+}
+```
+
+`items` weglassen = komplette Stornierung aller Positionen.
+
+### Kontakte
+
+```
+GET /admin/lexware/contacts/:customerId - Lexware-Kontakt fuer einen Kunden
+```
+
+### Webhook
+
+```
+POST   /admin/lexware/webhook - Webhook einrichten
+DELETE /admin/lexware/webhook - Webhook entfernen
+```
+
+Webhook-Endpoint fuer Lexware (kein Admin-Auth):
+```
+POST /webhooks/lexware/invoice-status
+```
+
+## Fehlerbehandlung
+
+- **Rate Limiting** - Mindestens 1 Sekunde zwischen Lexware API Calls
+- **429 Too Many Requests** - Exponential Backoff (1s, 2s, 4s, 8s, 16s - max 5 Versuche)
+- **503 Service Unavailable** - 3 Versuche mit Backoff (2s, 4s)
+- **Fehler-Status** - Fehlgeschlagene Rechnungen werden mit Fehlermeldung in der DB gespeichert
+- **E-Mail-Benachrichtigung** - Bei persistenten Fehlern wird eine E-Mail an die konfigurierte Adresse gesendet
+- **Retry** - Fehlgeschlagene Rechnungen koennen ueber die Admin UI oder API erneut versucht werden
+
+## Datenbank-Tabellen
+
+Das Plugin erstellt drei Tabellen:
+
+| Tabelle | Beschreibung |
+|---------|-------------|
+| `lexware_settings` | API Key (verschluesselt), SMTP (verschluesselt), Zahlungsbedingungen, Webhook-ID |
+| `lexware_invoice` | Rechnung pro Bestellung mit Lexware-ID, Rechnungsnummer, Status, Zahlungsstatus |
+| `lexware_contact` | Zuordnung Medusa Customer -> Lexware Kontakt-ID |
+| `lexware_credit_note` | Gutschriften mit Verknuepfung zur Original-Rechnung |
+
+## Lexware Office API Key erstellen
+
+1. In Lexware Office einloggen
+2. Einstellungen -> Oeffentliche API
+3. "Schluessel erstellen" klicken
+4. Den generierten Key kopieren
+5. Im Medusa Admin unter Lexware eintragen
+
+Der Key ist 24 Monate gueltig. Das Plugin zeigt einen Countdown in der Admin UI und sendet 30 Tage vor Ablauf taeglich eine Warn-E-Mail.
+
+## Bekannte Einschraenkungen
+
+- **Lexware API Rate Limit** - Maximal 2 Anfragen pro Sekunde. Das Plugin drosselt automatisch, aber bei vielen gleichzeitigen Bestellungen kann es zu Verzoegerungen kommen.
+- **Keine Rechnungs-Aktualisierung** - Finalisierte Rechnungen koennen in Lexware nicht geaendert oder geloescht werden. Korrekturen erfolgen per Gutschrift.
+- **PDF nur nach Finalisierung** - Im Testmodus (Dry Run) wird kein PDF erzeugt, da Lexware nur fuer finalisierte Rechnungen PDFs bereitstellt.
+- **Ein Key pro Shop** - Lexware Office erlaubt pro Account nur einen aktiven API Key.
