@@ -12,6 +12,14 @@ const LexwareSettings = model.define("lexware_settings", {
   webhook_subscription_id: model.text().nullable(),
   webhook_organization_id: model.text().nullable(),
   dry_run: model.boolean().default(false),
+  smtp_host: model.text().nullable(),
+  smtp_port: model.number().nullable(),
+  smtp_secure: model.boolean().nullable(),
+  smtp_user: model.text().nullable(),
+  smtp_pass_encrypted: model.text().nullable(),
+  smtp_pass_iv: model.text().nullable(),
+  smtp_pass_tag: model.text().nullable(),
+  notification_email: model.text().nullable(),
 })
 
 export default LexwareSettings

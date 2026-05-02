@@ -45,15 +45,28 @@ class LexwareModuleService extends MedusaService({
     return this.getClient(logger)
   }
 
-  private buildMailTransporter() {
+  private async buildMailTransporter(): Promise<nodemailer.Transporter | null> {
+    const results = await this.listLexwareSettings({}, { take: 1 })
+    const settings = results?.[0] as any
+
+    const host = settings?.smtp_host
+    const user = settings?.smtp_user
+    if (!host || !user) return null
+
+    let pass: string | undefined
+    if (settings.smtp_pass_encrypted && settings.smtp_pass_iv && settings.smtp_pass_tag) {
+      try {
+        pass = decrypt(settings.smtp_pass_encrypted, settings.smtp_pass_iv, settings.smtp_pass_tag)
+      } catch {
+        return null
+      }
+    }
+
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
+      host,
+      port: settings.smtp_port || 587,
+      secure: settings.smtp_secure ?? false,
+      auth: { user, pass },
     })
   }
 
@@ -65,6 +78,12 @@ class LexwareModuleService extends MedusaService({
     payment_conditions: Record<string, { type: string; days?: number }> | null
     webhook_subscription_id: string | null
     dry_run: boolean
+    smtp_host: string | null
+    smtp_port: number | null
+    smtp_secure: boolean | null
+    smtp_user: string | null
+    has_smtp_pass: boolean
+    notification_email: string | null
   }> {
     const results = await this.listLexwareSettings({}, { take: 1 })
     const settings = results?.[0] as any
@@ -77,6 +96,12 @@ class LexwareModuleService extends MedusaService({
         payment_conditions: null,
         webhook_subscription_id: null,
         dry_run: false,
+        smtp_host: null,
+        smtp_port: null,
+        smtp_secure: null,
+        smtp_user: null,
+        has_smtp_pass: false,
+        notification_email: null,
       }
     }
 
@@ -99,6 +124,12 @@ class LexwareModuleService extends MedusaService({
       payment_conditions: paymentConditions,
       webhook_subscription_id: settings.webhook_subscription_id || null,
       dry_run: settings.dry_run ?? false,
+      smtp_host: settings.smtp_host || null,
+      smtp_port: settings.smtp_port || null,
+      smtp_secure: settings.smtp_secure ?? null,
+      smtp_user: settings.smtp_user || null,
+      has_smtp_pass: !!settings.smtp_pass_encrypted,
+      notification_email: settings.notification_email || null,
     }
   }
 
@@ -125,6 +156,12 @@ class LexwareModuleService extends MedusaService({
     payment_due_days?: number
     payment_conditions?: Record<string, { type: string; days?: number }>
     dry_run?: boolean
+    smtp_host?: string
+    smtp_port?: number
+    smtp_secure?: boolean
+    smtp_user?: string
+    smtp_pass?: string
+    notification_email?: string
   }): Promise<void> {
     const results = await this.listLexwareSettings({}, { take: 1 })
     const existing = results?.[0] as any
@@ -151,6 +188,19 @@ class LexwareModuleService extends MedusaService({
 
     if (data.dry_run !== undefined) {
       updateData.dry_run = data.dry_run
+    }
+
+    if (data.smtp_host !== undefined) updateData.smtp_host = data.smtp_host || null
+    if (data.smtp_port !== undefined) updateData.smtp_port = data.smtp_port || null
+    if (data.smtp_secure !== undefined) updateData.smtp_secure = data.smtp_secure
+    if (data.smtp_user !== undefined) updateData.smtp_user = data.smtp_user || null
+    if (data.notification_email !== undefined) updateData.notification_email = data.notification_email || null
+
+    if (data.smtp_pass) {
+      const { encrypted, iv, tag } = encrypt(data.smtp_pass)
+      updateData.smtp_pass_encrypted = encrypted
+      updateData.smtp_pass_iv = iv
+      updateData.smtp_pass_tag = tag
     }
 
     if (data.payment_conditions !== undefined) {
@@ -915,20 +965,47 @@ class LexwareModuleService extends MedusaService({
     errorMessage: string,
     logger: any
   ): Promise<void> {
-    const notificationEmail = this.options_.notification_email
+    const settings = await this.getSettings()
+    const notificationEmail = settings.notification_email
     if (!notificationEmail) return
 
     try {
-      const transporter = this.buildMailTransporter()
+      const transporter = await this.buildMailTransporter()
+      if (!transporter) {
+        logger.warn("lexware: SMTP nicht konfiguriert, Fehler-E-Mail kann nicht gesendet werden")
+        return
+      }
       await transporter.sendMail({
-        from: `"Lexware Plugin" <${process.env.SMTP_USER}>`,
+        from: `"Lexware Plugin" <${settings.smtp_user}>`,
         to: notificationEmail,
-        subject: `Lexware Fehler: Rechnung für Bestellung #${displayId} fehlgeschlagen`,
-        text: `Die automatische Rechnungserstellung in Lexware ist fehlgeschlagen.\n\nBestellung: #${displayId}\nOrder ID: ${orderId}\nFehler: ${errorMessage}\n\nBitte prüfen Sie die Bestellung im Admin-Bereich und erstellen Sie die Rechnung ggf. manuell.`,
+        subject: `Lexware Fehler: Rechnung fuer Bestellung #${displayId} fehlgeschlagen`,
+        text: `Die automatische Rechnungserstellung in Lexware ist fehlgeschlagen.\n\nBestellung: #${displayId}\nOrder ID: ${orderId}\nFehler: ${errorMessage}\n\nBitte pruefen Sie die Bestellung im Admin-Bereich und erstellen Sie die Rechnung ggf. manuell.`,
       })
       logger.info(`lexware: Error notification sent to ${notificationEmail}`)
     } catch (mailErr) {
       logger.error(`lexware: Failed to send error notification: ${mailErr}`)
+    }
+  }
+
+  async sendTestEmail(logger: any): Promise<{ success: boolean; message: string }> {
+    const settings = await this.getSettings()
+    if (!settings.notification_email) {
+      return { success: false, message: "Keine Benachrichtigungs-E-Mail konfiguriert" }
+    }
+    const transporter = await this.buildMailTransporter()
+    if (!transporter) {
+      return { success: false, message: "SMTP nicht konfiguriert" }
+    }
+    try {
+      await transporter.sendMail({
+        from: `"Lexware Plugin" <${settings.smtp_user}>`,
+        to: settings.notification_email,
+        subject: "Lexware Plugin - Test-E-Mail",
+        text: "Diese E-Mail bestaetigt, dass die SMTP-Konfiguration im Lexware Plugin korrekt funktioniert.",
+      })
+      return { success: true, message: `Test-E-Mail an ${settings.notification_email} gesendet` }
+    } catch (err: any) {
+      return { success: false, message: `SMTP-Fehler: ${err.message}` }
     }
   }
 }

@@ -26,9 +26,10 @@
 - [x] Dry-Run Modus ein/aus (Rechnungen als Entwurf statt finalisiert)
 - [x] Webhook-Synchronisation Zahlungsstatus (Rechnungsliste + Admin UI Badge)
 - [ ] E-Rechnung Support (Vorschau)
-- [x] E-Mail-Versand bei Fehler (SMTP) - `sendErrorNotification()` ueber Backend .env
-- [ ] SMTP-Zugangsdaten in Plugin-Einstellungen speichern (aktuell ueber Backend .env)
-- [ ] Admin-E-Mail-Adresse in Plugin-Settings eintragen (aktuell ueber `LEXWARE_NOTIFICATION_EMAIL` env)
+- [x] E-Mail-Versand bei Fehler (SMTP) - `sendErrorNotification()`
+- [x] SMTP-Zugangsdaten in Plugin-Einstellungen (verschluesselt, Admin UI)
+- [x] Admin-E-Mail-Adresse in Plugin-Settings (Admin UI)
+- [x] Test-E-Mail senden Button in Admin UI
 - [ ] Automatische Warn-E-Mail X Tage vor API-Key-Ablauf (konfigurierbar)
 
 ### API Key
