@@ -9,6 +9,7 @@ import { LexwareApiClient } from "./client/lexware-api.js"
 import { CreateContactPayload, CreateInvoicePayload, CreateCreditNotePayload, LexwareApiError } from "./client/types.js"
 import { LexwarePluginOptions } from "./types.js"
 import { encrypt, decrypt } from "./lib/crypto.js"
+import { validateLicenseKey } from "./lib/license.js"
 
 class LexwareModuleService extends MedusaService({
   LexwareContact,
@@ -18,6 +19,7 @@ class LexwareModuleService extends MedusaService({
 }) {
   private options_: LexwarePluginOptions
   private client_: LexwareApiClient | null = null
+  private isPro_: boolean
 
   constructor(_: any, options: LexwarePluginOptions) {
     super(...arguments)
@@ -26,10 +28,21 @@ class LexwareModuleService extends MedusaService({
       payment_term_days: 14,
       ...options,
     }
+    this.isPro_ = validateLicenseKey(options.license_key)
   }
 
   get options(): LexwarePluginOptions {
     return this.options_
+  }
+
+  get isPro(): boolean {
+    return this.isPro_
+  }
+
+  private requirePro(feature: string): void {
+    if (!this.isPro_) {
+      throw new Error(`[LexBridge] "${feature}" ist ein Pro-Feature. License Key in den Plugin-Optionen eintragen um Pro-Features freizuschalten.`)
+    }
   }
 
   private async getClient(logger: any): Promise<LexwareApiClient> {
@@ -86,6 +99,7 @@ class LexwareModuleService extends MedusaService({
     smtp_user: string | null
     has_smtp_pass: boolean
     notification_email: string | null
+    is_pro: boolean
   }> {
     const results = await this.listLexwareSettings({}, { take: 1 })
     const settings = results?.[0] as any
@@ -104,6 +118,7 @@ class LexwareModuleService extends MedusaService({
         smtp_user: null,
         has_smtp_pass: false,
         notification_email: null,
+        is_pro: this.isPro_,
       }
     }
 
@@ -132,6 +147,7 @@ class LexwareModuleService extends MedusaService({
       smtp_user: settings.smtp_user || null,
       has_smtp_pass: !!settings.smtp_pass_encrypted,
       notification_email: settings.notification_email || null,
+      is_pro: this.isPro_,
     }
   }
 
@@ -188,21 +204,24 @@ class LexwareModuleService extends MedusaService({
       updateData.payment_due_days = data.payment_due_days
     }
 
-    if (data.dry_run !== undefined) {
+    if (data.dry_run !== undefined && this.isPro_) {
       updateData.dry_run = data.dry_run
     }
 
-    if (data.smtp_host !== undefined) updateData.smtp_host = data.smtp_host || null
-    if (data.smtp_port !== undefined) updateData.smtp_port = data.smtp_port || null
-    if (data.smtp_secure !== undefined) updateData.smtp_secure = data.smtp_secure
-    if (data.smtp_user !== undefined) updateData.smtp_user = data.smtp_user || null
-    if (data.notification_email !== undefined) updateData.notification_email = data.notification_email || null
+    // SMTP/E-Mail: Pro-Feature
+    if (this.isPro_) {
+      if (data.smtp_host !== undefined) updateData.smtp_host = data.smtp_host || null
+      if (data.smtp_port !== undefined) updateData.smtp_port = data.smtp_port || null
+      if (data.smtp_secure !== undefined) updateData.smtp_secure = data.smtp_secure
+      if (data.smtp_user !== undefined) updateData.smtp_user = data.smtp_user || null
+      if (data.notification_email !== undefined) updateData.notification_email = data.notification_email || null
 
-    if (data.smtp_pass) {
-      const { encrypted, iv, tag } = encrypt(data.smtp_pass)
-      updateData.smtp_pass_encrypted = encrypted
-      updateData.smtp_pass_iv = iv
-      updateData.smtp_pass_tag = tag
+      if (data.smtp_pass) {
+        const { encrypted, iv, tag } = encrypt(data.smtp_pass)
+        updateData.smtp_pass_encrypted = encrypted
+        updateData.smtp_pass_iv = iv
+        updateData.smtp_pass_tag = tag
+      }
     }
 
     if (data.payment_conditions !== undefined) {
@@ -678,7 +697,7 @@ class LexwareModuleService extends MedusaService({
       }
 
       const client = await this.getClient(logger)
-      const isDryRun = settings.dry_run
+      const isDryRun = this.isPro_ && settings.dry_run
 
       // Step 3: Create invoice in Lexware (draft if dry_run)
       const lexwareInvoice = await client.createInvoice(invoicePayload, !isDryRun)
@@ -795,6 +814,7 @@ class LexwareModuleService extends MedusaService({
     logger: any,
     items?: { name: string; quantity: number; grossAmount: number; taxRatePercentage: number }[]
   ): Promise<{ creditNoteId: string; voucherNumber: string | null; pdfBuffer: Buffer | null }> {
+    this.requirePro("Gutschriften")
     // 1. Original-Rechnung finden
     const invoiceRecord = await this.getInvoiceByOrderId(orderId)
     if (!invoiceRecord?.lexware_invoice_id) {
@@ -964,6 +984,7 @@ class LexwareModuleService extends MedusaService({
   // --- Webhook Management ---
 
   async setupWebhook(logger: any): Promise<{ subscriptionId: string }> {
+    this.requirePro("Webhook")
     const settings = await this.getSettings()
     if (settings.webhook_subscription_id) {
       logger.info(`[lexware] Webhook bereits eingerichtet: ${settings.webhook_subscription_id}`)
@@ -1112,6 +1133,7 @@ class LexwareModuleService extends MedusaService({
   }
 
   async sendTestEmail(logger: any): Promise<{ success: boolean; message: string }> {
+    this.requirePro("E-Mail-Benachrichtigungen")
     const settings = await this.getSettings()
     if (!settings.notification_email) {
       return { success: false, message: "Keine Benachrichtigungs-E-Mail konfiguriert" }

@@ -5,6 +5,8 @@ export interface LexwarePluginOptions {
   payment_term_days?: number
   /** Email address for error notifications */
   notification_email?: string
+  /** License key for Pro features */
+  license_key?: string
 }
 
 export interface CreateCustomerContactInput {

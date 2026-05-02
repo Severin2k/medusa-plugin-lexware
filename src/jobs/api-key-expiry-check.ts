@@ -10,6 +10,7 @@ export default async function apiKeyExpiryCheck(container: MedusaContainer) {
 
   const settings = await lexwareService.getSettings()
 
+  if (!settings.is_pro) return
   if (!settings.has_api_key || !settings.api_key_created_at) return
   if (!settings.notification_email || !settings.smtp_host) return
 
