@@ -3,8 +3,10 @@ import {
   LexwareContactResponse,
   LexwareContactsListResponse,
   LexwareInvoiceResponse,
+  LexwareCreditNoteResponse,
   CreateContactPayload,
   CreateInvoicePayload,
+  CreateCreditNotePayload,
 } from "./types.js"
 
 const BASE_URL = process.env.LEXWARE_API_URL || "https://api.lexware.io"
@@ -244,6 +246,37 @@ export class LexwareApiClient {
     await this.requestWithRetry<void>(
       "DELETE",
       `/v1/event-subscriptions/${encodeURIComponent(subscriptionId)}`
+    )
+  }
+
+  // --- Credit Notes ---
+
+  async createCreditNote(
+    data: CreateCreditNotePayload,
+    finalize: boolean = true
+  ): Promise<LexwareCreditNoteResponse> {
+    const query = finalize ? "?finalize=true" : ""
+    const createResult = await this.requestWithRetry<{ id: string }>(
+      "POST",
+      `/v1/credit-notes${query}`,
+      data
+    )
+    return this.getCreditNote(createResult.id)
+  }
+
+  async getCreditNote(creditNoteId: string): Promise<LexwareCreditNoteResponse> {
+    return this.requestWithRetry<LexwareCreditNoteResponse>(
+      "GET",
+      `/v1/credit-notes/${encodeURIComponent(creditNoteId)}`
+    )
+  }
+
+  async downloadCreditNotePdf(creditNoteId: string): Promise<Buffer> {
+    return this.requestWithRetry<Buffer>(
+      "GET",
+      `/v1/credit-notes/${encodeURIComponent(creditNoteId)}/file`,
+      undefined,
+      "buffer"
     )
   }
 }

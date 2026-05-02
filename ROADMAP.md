@@ -71,7 +71,7 @@
 
 ## v1.1 - Pro
 
-- [ ] Stornierungen und Gutschriften
+- [x] Stornierungen und Gutschriften (Credit Notes API, voll/teil, Dry-Run)
 - [x] Lexware Webhook - Zahlungsstatus zurueck nach Medusa (schon in v1.0 erledigt)
 - [x] E-Mail-Versand ueber Plugin-eigene SMTP-Konfiguration
 

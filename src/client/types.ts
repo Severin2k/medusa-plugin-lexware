@@ -128,6 +128,36 @@ export interface LexwareInvoiceResponse {
   voucherStatus?: string
 }
 
+// --- Credit Notes ---
+
+export interface CreateCreditNotePayload {
+  voucherDate: string
+  address: {
+    contactId: string
+  }
+  lineItems: LexwareLineItem[]
+  totalPrice?: {
+    currency: string
+  }
+  taxConditions?: {
+    taxType: string
+  }
+  introduction?: string
+  remark?: string
+  precedingSalesVoucherId?: string
+}
+
+export interface LexwareCreditNoteResponse {
+  id: string
+  organizationId?: string
+  voucherNumber?: string
+  voucherDate?: string
+  totalGrossAmount?: number
+  totalNetAmount?: number
+  totalTaxAmount?: number
+  voucherStatus?: string
+}
+
 // --- Errors ---
 
 export class LexwareApiError extends Error {

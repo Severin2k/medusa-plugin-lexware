@@ -4,8 +4,9 @@ import * as nodemailer from "nodemailer"
 import LexwareContact from "./models/lexware-contact.js"
 import LexwareInvoice from "./models/lexware-invoice.js"
 import LexwareSettings from "./models/lexware-settings.js"
+import LexwareCreditNote from "./models/lexware-credit-note.js"
 import { LexwareApiClient } from "./client/lexware-api.js"
-import { CreateContactPayload, CreateInvoicePayload, LexwareApiError } from "./client/types.js"
+import { CreateContactPayload, CreateInvoicePayload, CreateCreditNotePayload, LexwareApiError } from "./client/types.js"
 import { LexwarePluginOptions } from "./types.js"
 import { encrypt, decrypt } from "./lib/crypto.js"
 
@@ -13,6 +14,7 @@ class LexwareModuleService extends MedusaService({
   LexwareContact,
   LexwareInvoice,
   LexwareSettings,
+  LexwareCreditNote,
 }) {
   private options_: LexwarePluginOptions
   private client_: LexwareApiClient | null = null
@@ -784,6 +786,128 @@ class LexwareModuleService extends MedusaService({
       { take: 1 }
     )
     return results?.[0] || null
+  }
+
+  // ─── Credit Notes / Gutschriften ───
+
+  async issueCreditNote(
+    orderId: string,
+    logger: any,
+    items?: { name: string; quantity: number; grossAmount: number; taxRatePercentage: number }[]
+  ): Promise<{ creditNoteId: string; voucherNumber: string | null; pdfBuffer: Buffer | null }> {
+    // 1. Original-Rechnung finden
+    const invoiceRecord = await this.getInvoiceByOrderId(orderId)
+    if (!invoiceRecord?.lexware_invoice_id) {
+      throw new Error(`Keine Lexware-Rechnung fuer Order ${orderId} gefunden`)
+    }
+
+    // 2. Rechnungsdetails aus Lexware laden
+    const client = await this.getClient(logger)
+    const originalInvoice = await client.getInvoice(invoiceRecord.lexware_invoice_id) as any
+
+    if (!originalInvoice?.address?.contactId) {
+      throw new Error(`Original-Rechnung ${invoiceRecord.lexware_invoice_id} hat keinen Kontakt`)
+    }
+
+    // 3. Positionen bestimmen
+    let creditLineItems: any[]
+    if (items && items.length > 0) {
+      // Teilerstattung: nur ausgewaehlte Positionen
+      creditLineItems = items.map((item) => ({
+        type: "custom" as const,
+        name: item.name,
+        quantity: item.quantity,
+        unitName: "Stueck",
+        unitPrice: {
+          currency: originalInvoice.totalPrice?.currency || "EUR",
+          grossAmount: item.grossAmount,
+          taxRatePercentage: item.taxRatePercentage,
+        },
+      }))
+    } else {
+      // Volle Stornierung: alle Positionen der Original-Rechnung uebernehmen
+      creditLineItems = (originalInvoice.lineItems || []).map((li: any) => ({
+        type: "custom" as const,
+        name: li.name,
+        description: li.description,
+        quantity: li.quantity,
+        unitName: li.unitName || "Stueck",
+        unitPrice: {
+          currency: li.unitPrice?.currency || "EUR",
+          grossAmount: li.unitPrice?.grossAmount || li.unitPrice?.netAmount || 0,
+          taxRatePercentage: li.unitPrice?.taxRatePercentage ?? 19,
+        },
+      }))
+    }
+
+    if (creditLineItems.length === 0) {
+      throw new Error("Keine Positionen fuer Gutschrift")
+    }
+
+    // 4. Credit Note Payload
+    const settings = await this.getSettings()
+    const isDryRun = settings.dry_run
+
+    const voucherNumberRef = invoiceRecord.lexware_voucher_number
+      ? ` (Rechnung ${invoiceRecord.lexware_voucher_number})`
+      : ""
+
+    const payload: CreateCreditNotePayload = {
+      voucherDate: new Date().toISOString(),
+      address: { contactId: originalInvoice.address.contactId },
+      lineItems: creditLineItems,
+      totalPrice: { currency: originalInvoice.totalPrice?.currency || "EUR" },
+      taxConditions: { taxType: "gross" },
+      introduction: `Gutschrift zu Bestellung${voucherNumberRef}`,
+      remark: items ? "Teilerstattung" : "Stornierung",
+      precedingSalesVoucherId: invoiceRecord.lexware_invoice_id,
+    }
+
+    // 5. Credit Note erstellen
+    const creditNote = await client.createCreditNote(payload, !isDryRun)
+
+    logger.info(
+      `[lexware] ${isDryRun ? "DRY RUN: " : ""}Gutschrift erstellt: ${creditNote.id} (${creditNote.voucherNumber || "Entwurf"}) fuer Order ${orderId}`
+    )
+
+    // 6. In DB speichern
+    await this.createLexwareCreditNotes({
+      order_id: orderId,
+      linked_invoice_id: invoiceRecord.lexware_invoice_id,
+      lexware_credit_note_id: creditNote.id,
+      lexware_voucher_number: creditNote.voucherNumber || null,
+      status: isDryRun ? "draft" : "created",
+    })
+
+    // 7. PDF herunterladen (nur wenn finalisiert)
+    let pdfBuffer: Buffer | null = null
+    if (!isDryRun) {
+      try {
+        pdfBuffer = await client.downloadCreditNotePdf(creditNote.id)
+      } catch (pdfErr) {
+        logger.error(`[lexware] Gutschrift-PDF Download fehlgeschlagen: ${pdfErr}`)
+      }
+    }
+
+    return {
+      creditNoteId: creditNote.id,
+      voucherNumber: creditNote.voucherNumber || null,
+      pdfBuffer,
+    }
+  }
+
+  async listCreditNotes(orderId?: string): Promise<any[]> {
+    const filters = orderId ? { order_id: orderId } : {}
+    return this.listLexwareCreditNotes(filters, { take: 100, order: { created_at: "DESC" } })
+  }
+
+  async downloadCreditNotePdf(
+    data: { lexware_credit_note_id: string },
+    logger: any
+  ): Promise<{ pdf: Buffer }> {
+    const client = await this.getClient(logger)
+    const pdf = await client.downloadCreditNotePdf(data.lexware_credit_note_id)
+    return { pdf }
   }
 
   async downloadInvoicePdf(
