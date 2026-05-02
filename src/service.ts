@@ -45,7 +45,7 @@ class LexwareModuleService extends MedusaService({
     return this.getClient(logger)
   }
 
-  private async buildMailTransporter(): Promise<nodemailer.Transporter | null> {
+  async buildMailTransporter(): Promise<nodemailer.Transporter | null> {
     const results = await this.listLexwareSettings({}, { take: 1 })
     const settings = results?.[0] as any
 

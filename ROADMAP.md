@@ -30,7 +30,7 @@
 - [x] SMTP-Zugangsdaten in Plugin-Einstellungen (verschluesselt, Admin UI)
 - [x] Admin-E-Mail-Adresse in Plugin-Settings (Admin UI)
 - [x] Test-E-Mail senden Button in Admin UI
-- [ ] Automatische Warn-E-Mail X Tage vor API-Key-Ablauf (konfigurierbar)
+- [x] Automatische Warn-E-Mail 30 Tage vor API-Key-Ablauf (taeglich 08:00)
 
 ### API Key
 - [x] `api_key_created_at` beim Speichern des Keys setzen
@@ -73,7 +73,7 @@
 
 - [ ] Stornierungen und Gutschriften
 - [x] Lexware Webhook - Zahlungsstatus zurueck nach Medusa (schon in v1.0 erledigt)
-- [ ] E-Mail-Versand waehlbar (NotificationService oder SMTP)
+- [x] E-Mail-Versand ueber Plugin-eigene SMTP-Konfiguration
 
 ---
 
