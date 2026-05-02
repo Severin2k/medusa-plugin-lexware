@@ -2,19 +2,34 @@
 
 Lexware Office Rechnungsintegration fuer Medusa v2. Erstellt automatisch Rechnungen in Lexware Office bei Bestellungen, verwaltet Kontakte, haengt Rechnungs-PDFs an Bestaetigungsmails an und synchronisiert Zahlungsstatus per Webhook.
 
-## Features
+## Free vs. Pro
 
-- **Automatische Rechnungserstellung** - Rechnung wird bei jeder Bestellung automatisch in Lexware angelegt und finalisiert
-- **Kontaktverwaltung** - Kunden werden automatisch in Lexware gesucht oder angelegt (auch Gastbestellungen)
-- **PDF-Versand** - Rechnungs-PDF wird heruntergeladen und kann an die Bestaetigungsmail angehaengt werden
+LexBridge gibt es in zwei Versionen:
+
+### Free - kostenlos
+
+- **Automatische Rechnungserstellung** - Rechnung bei jeder Bestellung automatisch in Lexware anlegen und finalisieren
+- **Kontaktverwaltung** - Kunden automatisch in Lexware suchen oder anlegen (auch Gastbestellungen)
+- **PDF-Versand** - Rechnungs-PDF herunterladen und an Bestaetigungsmail anhaengen
 - **Zahlungsbedingungen pro Zahlungsmethode** - Sofort faellig, X Tage, Lieferdatum - individuell pro Provider
+- **Admin UI** - API Key Management, Rechnungsliste, Zahlungsbedingungen, Verbindungstest
+- **API Key Countdown** - Ablauf-Warnung in der Admin UI (gruen/orange/rot)
+- **Retry bei Fehlern** - Fehlgeschlagene Rechnungen erneut versuchen
+- **Verschluesselung** - API Key wird mit AES-256-GCM in der Datenbank gespeichert
+- **Rate Limiting** - Automatische Drosselung mit Exponential Backoff bei 429/503 Fehlern
+
+### Pro - 9,99 EUR/Monat oder 99,99 EUR/Jahr
+
+Alle Free-Features plus:
+
 - **Gutschriften/Stornierungen** - Volle oder teilweise Erstattung per Credit Note, verknuepft mit Original-Rechnung
 - **Testmodus (Dry Run)** - Rechnungen als Entwurf anlegen ohne zu finalisieren
 - **Webhook** - Zahlungsstatus-Aenderungen aus Lexware werden automatisch synchronisiert
-- **Fehler-Benachrichtigungen** - E-Mail bei fehlgeschlagenen Rechnungen, Warnung vor API-Key-Ablauf
-- **Admin UI** - Komplette Verwaltung ueber die Medusa Admin-Oberflaeche
-- **Verschluesselung** - API Key und SMTP-Passwort werden mit AES-256-GCM in der Datenbank gespeichert
-- **Rate Limiting** - Automatische Drosselung mit Exponential Backoff bei 429/503 Fehlern
+- **E-Mail-Benachrichtigungen** - SMTP-Konfiguration in der Admin UI, Fehler-Mails bei fehlgeschlagenen Rechnungen
+- **Warn-E-Mail vor API-Key-Ablauf** - Taeglich 30 Tage vor Ablauf automatisch per E-Mail erinnert
+- **Tax Rate Override** - MwSt pro Position per Callback ueberschreiben
+
+Pro wird ueber einen License Key in den Plugin-Optionen freigeschaltet. Ohne Key laufen alle Free-Features ohne Einschraenkung.
 
 ## Voraussetzungen
 
@@ -58,6 +73,7 @@ export default defineConfig({
       options: {
         invoice_on_order: true,   // Rechnung automatisch bei Bestellung erstellen
         payment_term_days: 14,    // Standard-Zahlungsziel in Tagen
+        // license_key: "LB-...", // Pro-Features freischalten (optional)
       },
     },
   ],
@@ -82,10 +98,11 @@ npx medusa db:migrate
 |--------|-----|----------|-------------|
 | `invoice_on_order` | `boolean` | `true` | Rechnung automatisch bei `order.placed` erstellen |
 | `payment_term_days` | `number` | `14` | Standard-Zahlungsziel in Tagen (0 = sofort faellig) |
+| `license_key` | `string` | - | License Key fuer Pro-Features (optional) |
 
 ## Admin UI
 
-Die komplette Konfiguration erfolgt ueber die Admin-Oberflaeche unter **Lexware**:
+Die komplette Konfiguration erfolgt ueber die Admin-Oberflaeche unter **LexBridge**:
 
 ### API-Verbindung
 - API Key eingeben, aendern und testen
