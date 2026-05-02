@@ -23,8 +23,8 @@ export default async function apiKeyExpiryCheck(container: MedusaContainer) {
   if (daysRemaining < -7) return // Laengst abgelaufen, keine Spam-Mails mehr
 
   const subject = daysRemaining <= 0
-    ? "Lexware Plugin: API Key ist abgelaufen!"
-    : `Lexware Plugin: API Key laeuft in ${daysRemaining} ${daysRemaining === 1 ? "Tag" : "Tagen"} ab`
+    ? "LexBridge: API Key ist abgelaufen!"
+    : `LexBridge: API Key laeuft in ${daysRemaining} ${daysRemaining === 1 ? "Tag" : "Tagen"} ab`
 
   const text = daysRemaining <= 0
     ? "Dein Lexware API Key ist abgelaufen. Rechnungen koennen nicht mehr erstellt werden.\n\nBitte erstelle einen neuen Key in Lexware Office und trage ihn im Admin unter Lexware ein."
@@ -35,7 +35,7 @@ export default async function apiKeyExpiryCheck(container: MedusaContainer) {
     if (!transporter) return
 
     await transporter.sendMail({
-      from: `"Lexware Plugin" <${settings.smtp_user}>`,
+      from: `"LexBridge" <${settings.smtp_user}>`,
       to: settings.notification_email,
       subject,
       text,

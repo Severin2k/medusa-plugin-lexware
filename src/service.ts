@@ -1100,7 +1100,7 @@ class LexwareModuleService extends MedusaService({
         return
       }
       await transporter.sendMail({
-        from: `"Lexware Plugin" <${settings.smtp_user}>`,
+        from: `"LexBridge" <${settings.smtp_user}>`,
         to: notificationEmail,
         subject: `Lexware Fehler: Rechnung fuer Bestellung #${displayId} fehlgeschlagen`,
         text: `Die automatische Rechnungserstellung in Lexware ist fehlgeschlagen.\n\nBestellung: #${displayId}\nOrder ID: ${orderId}\nFehler: ${errorMessage}\n\nBitte pruefen Sie die Bestellung im Admin-Bereich und erstellen Sie die Rechnung ggf. manuell.`,
@@ -1122,10 +1122,10 @@ class LexwareModuleService extends MedusaService({
     }
     try {
       await transporter.sendMail({
-        from: `"Lexware Plugin" <${settings.smtp_user}>`,
+        from: `"LexBridge" <${settings.smtp_user}>`,
         to: settings.notification_email,
-        subject: "Lexware Plugin - Test-E-Mail",
-        text: "Diese E-Mail bestaetigt, dass die SMTP-Konfiguration im Lexware Plugin korrekt funktioniert.",
+        subject: "LexBridge - Test-E-Mail",
+        text: "Diese E-Mail bestaetigt, dass die SMTP-Konfiguration im LexBridge korrekt funktioniert.",
       })
       return { success: true, message: `Test-E-Mail an ${settings.notification_email} gesendet` }
     } catch (err: any) {

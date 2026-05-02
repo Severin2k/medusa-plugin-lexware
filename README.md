@@ -1,4 +1,4 @@
-# medusa-plugin-lexware
+# LexBridge
 
 Lexware Office Rechnungsintegration fuer Medusa v2. Erstellt automatisch Rechnungen in Lexware Office bei Bestellungen, verwaltet Kontakte, haengt Rechnungs-PDFs an Bestaetigungsmails an und synchronisiert Zahlungsstatus per Webhook.
 
@@ -25,7 +25,7 @@ Lexware Office Rechnungsintegration fuer Medusa v2. Erstellt automatisch Rechnun
 ## Installation
 
 ```bash
-npm install medusa-plugin-lexware
+npm install medusa-lexbridge
 ```
 
 ## Einrichtung
@@ -47,13 +47,13 @@ Alle anderen Einstellungen (API Key, SMTP, Benachrichtigungs-E-Mail) werden uebe
 Plugin in `medusa-config.ts` hinzufuegen:
 
 ```typescript
-import { LEXWARE_MODULE } from "medusa-plugin-lexware"
+import { LEXWARE_MODULE } from "medusa-lexbridge"
 
 export default defineConfig({
   // ...
   modules: [
     {
-      resolve: "medusa-plugin-lexware",
+      resolve: "medusa-lexbridge",
       key: LEXWARE_MODULE,
       options: {
         invoice_on_order: true,   // Rechnung automatisch bei Bestellung erstellen

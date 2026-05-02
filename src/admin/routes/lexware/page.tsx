@@ -104,7 +104,7 @@ const LexwareSettingsPage = () => {
     <Container className="p-8">
       <div className="flex flex-col gap-y-8">
         <div>
-          <Heading level="h1">Lexware Office</Heading>
+          <Heading level="h1">LexBridge</Heading>
           <Text className="text-ui-fg-subtle mt-1">
             API-Verbindung und Rechnungseinstellungen
           </Text>
@@ -124,7 +124,7 @@ const LexwareSettingsPage = () => {
               placeholder={
                 hasApiKey
                   ? "API Key gespeichert — leer lassen um beizubehalten"
-                  : "Lexware Office API Key eingeben"
+                  : "LexBridge API Key eingeben"
               }
             />
           </div>
@@ -194,7 +194,7 @@ const LexwareSettingsPage = () => {
 }
 
 export const config = defineRouteConfig({
-  label: "Lexware",
+  label: "LexBridge",
 })
 
 export default LexwareSettingsPage
