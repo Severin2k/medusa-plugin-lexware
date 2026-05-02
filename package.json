@@ -1,0 +1,57 @@
+{
+  "name": "medusa-plugin-lexware",
+  "version": "0.1.0",
+  "description": "Lexware Office invoice integration for Medusa v2 — automatically creates invoices, manages contacts, and sends PDF invoices on order placement.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/admin"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "jest --runInBand --forceExit",
+    "lint": "eslint src/ --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": [
+    "medusa",
+    "medusa-plugin",
+    "lexware",
+    "lexoffice",
+    "invoice",
+    "accounting",
+    "rechnung",
+    "buchhaltung"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "peerDependencies": {
+    "@medusajs/framework": "^2.10.0"
+  },
+  "dependencies": {
+    "nodemailer": "^8.0.4"
+  },
+  "devDependencies": {
+    "@medusajs/framework": "^2.13.1",
+    "@swc/core": "^1.7.28",
+    "@swc/jest": "^0.2.36",
+    "@types/jest": "^29.5.13",
+    "@types/node": "^20.12.11",
+    "@types/nodemailer": "^7.0.11",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.6.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
