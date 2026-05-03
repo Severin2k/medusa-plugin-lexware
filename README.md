@@ -1,5 +1,15 @@
 # LexBridge
 
+[![npm version](https://img.shields.io/npm/v/medusa-lexbridge.svg)](https://www.npmjs.com/package/medusa-lexbridge)
+[![npm downloads](https://img.shields.io/npm/dm/medusa-lexbridge.svg)](https://www.npmjs.com/package/medusa-lexbridge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+Lexware Office integration for Medusa v2 - automatic invoices, contact management, PDF delivery, and more.
+
+**[Website](https://lexbridge.shop)** | **[npm](https://www.npmjs.com/package/medusa-lexbridge)** | **[Issues](https://github.com/Severin2k/medusa-plugin-lexware/issues)**
+
+---
+
 Lexware Office Rechnungsintegration fuer Medusa v2. Erstellt automatisch Rechnungen in Lexware Office bei Bestellungen, verwaltet Kontakte, haengt Rechnungs-PDFs an Bestaetigungsmails an und synchronisiert Zahlungsstatus per Webhook.
 
 ## Free vs. Pro
@@ -73,7 +83,8 @@ export default defineConfig({
       options: {
         invoice_on_order: true,   // Rechnung automatisch bei Bestellung erstellen
         payment_term_days: 14,    // Standard-Zahlungsziel in Tagen
-        // license_key: "LB-...", // Pro-Features freischalten (optional)
+        // lemon_squeezy_key: "dein-key", // Pro License Key von lexbridge.shop
+        // license_key: "LB-...",              // Alternativ: HMAC Key (offline)
       },
     },
   ],
@@ -98,7 +109,9 @@ npx medusa db:migrate
 |--------|-----|----------|-------------|
 | `invoice_on_order` | `boolean` | `true` | Rechnung automatisch bei `order.placed` erstellen |
 | `payment_term_days` | `number` | `14` | Standard-Zahlungsziel in Tagen (0 = sofort faellig) |
-| `license_key` | `string` | - | License Key fuer Pro-Features (optional) |
+| `lemon_squeezy_key` | `string` | - | Pro License Key von lexbridge.shop |
+| `instance_name` | `string` | `medusa-<hostname>` | Instanz-Name fuer Lizenz-Aktivierung |
+| `license_key` | `string` | - | HMAC License Key (offline, alternativ) |
 
 ## Admin UI
 

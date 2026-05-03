@@ -5,8 +5,12 @@ export interface LexwarePluginOptions {
   payment_term_days?: number
   /** Email address for error notifications */
   notification_email?: string
-  /** License key for Pro features */
+  /** HMAC license key for Pro features (offline validation) */
   license_key?: string
+  /** Lemon Squeezy license key for Pro features (online validation) */
+  lemon_squeezy_key?: string
+  /** Instance name for Lemon Squeezy activation (default: medusa-<hostname>) */
+  instance_name?: string
 }
 
 export interface CreateCustomerContactInput {

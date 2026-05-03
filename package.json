@@ -1,7 +1,7 @@
 {
-  "name": "medusa-plugin-lexware",
-  "version": "0.1.0",
-  "description": "Lexware Office invoice integration for Medusa v2 — automatically creates invoices, manages contacts, and sends PDF invoices on order placement.",
+  "name": "medusa-lexbridge",
+  "version": "1.0.0",
+  "description": "Lexware Office integration for Medusa v2 - automatic invoices, contact management, PDF delivery, credit notes, and more.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -18,18 +18,26 @@
   "keywords": [
     "medusa",
     "medusa-plugin",
+    "medusa-v2",
     "lexware",
+    "lexware-office",
     "lexoffice",
     "invoice",
     "accounting",
     "rechnung",
-    "buchhaltung"
+    "buchhaltung",
+    "erp",
+    "german-tax"
   ],
-  "author": "",
+  "author": "Blumen Komander GbR <info@lexbridge.shop>",
   "license": "MIT",
+  "homepage": "https://lexbridge.shop",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/Severin2k/medusa-plugin-lexware.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Severin2k/medusa-plugin-lexware/issues"
   },
   "peerDependencies": {
     "@medusajs/framework": "^2.10.0"

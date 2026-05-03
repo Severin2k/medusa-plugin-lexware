@@ -9,7 +9,7 @@ import { LexwareApiClient } from "./client/lexware-api.js"
 import { CreateContactPayload, CreateInvoicePayload, CreateCreditNotePayload, LexwareApiError } from "./client/types.js"
 import { LexwarePluginOptions } from "./types.js"
 import { encrypt, decrypt } from "./lib/crypto.js"
-import { validateLicenseKey } from "./lib/license.js"
+import { validateLicenseKey, validateLemonSqueezyKey } from "./lib/license.js"
 
 class LexwareModuleService extends MedusaService({
   LexwareContact,
@@ -28,7 +28,15 @@ class LexwareModuleService extends MedusaService({
       payment_term_days: 14,
       ...options,
     }
+    // HMAC-Key hat Prioritaet (offline, sofort)
     this.isPro_ = validateLicenseKey(options.license_key)
+
+    // Lemon Squeezy Key async validieren wenn kein HMAC-Key
+    if (!this.isPro_ && options.lemon_squeezy_key) {
+      validateLemonSqueezyKey(options.lemon_squeezy_key, options.instance_name)
+        .then((valid) => { this.isPro_ = valid })
+        .catch(() => { /* bleibt false */ })
+    }
   }
 
   get options(): LexwarePluginOptions {
