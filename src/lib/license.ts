@@ -1,4 +1,5 @@
 import { createHmac } from "crypto"
+import { hostname } from "os"
 
 const LICENSE_SECRET = "LexBridge-2026-HMAC-SigningKey-v1"
 
@@ -89,7 +90,7 @@ export async function validateLemonSqueezyKey(key: string | undefined, instanceN
       },
       body: new URLSearchParams({
         license_key: key,
-        instance_name: instanceName || `medusa-${require("os").hostname()}`,
+        instance_name: instanceName || `medusa-${hostname()}`,
       }),
     })
 
