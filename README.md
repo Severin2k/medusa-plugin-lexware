@@ -25,6 +25,7 @@ LexBridge gibt es in zwei Versionen:
 - **Admin UI** - API Key Management, Rechnungsliste, Zahlungsbedingungen, Verbindungstest
 - **API Key Countdown** - Ablauf-Warnung in der Admin UI (gruen/orange/rot)
 - **Retry bei Fehlern** - Fehlgeschlagene Rechnungen erneut versuchen
+- **E-Rechnung / ZUGFeRD** - ZUGFeRD-konforme Rechnungen automatisch, wenn E-Rechnung in Lexware aktiviert ist (ab 2025 Pflicht fuer B2B)
 - **Verschluesselung** - API Key wird mit AES-256-GCM in der Datenbank gespeichert
 - **Rate Limiting** - Automatische Drosselung mit Exponential Backoff bei 429/503 Fehlern
 
@@ -290,6 +291,26 @@ Das Plugin erstellt drei Tabellen:
 5. Im Medusa Admin unter Lexware eintragen
 
 Der Key ist 24 Monate gueltig. Das Plugin zeigt einen Countdown in der Admin UI und sendet 30 Tage vor Ablauf taeglich eine Warn-E-Mail.
+
+## E-Rechnung / ZUGFeRD
+
+Ab 2025 ist die E-Rechnung fuer B2B-Transaktionen in Deutschland Pflicht. LexBridge unterstuetzt das automatisch - Lexware Office generiert ZUGFeRD-konforme PDFs mit eingebettetem XML.
+
+### Voraussetzungen
+
+1. **E-Rechnung in Lexware aktivieren**: Einstellungen -> E-Rechnung -> "E-Rechnung erstellen" (Admin-Rechte noetig)
+2. **Kontakt als Firma anlegen**: Der Kunde muss in Lexware als Firmenkontakt (mit `company.name`) gespeichert sein - das Plugin macht das automatisch wenn der Kunde einen Firmennamen hat
+
+### So funktioniert es
+
+- Das Plugin erstellt Rechnungen ganz normal ueber die Lexware API
+- Lexware erkennt automatisch ob der Kontakt ein Firmenkunde ist
+- Beim PDF-Download wird das ZUGFeRD-XML automatisch in das PDF eingebettet
+- Kein extra Code oder Konfiguration im Plugin noetig
+
+### XRechnung (Behoerden)
+
+Fuer oeffentliche Auftraggeber (Behoerden) wird statt ZUGFeRD das XRechnung-Format benoetigt. Dafuer muessen am Kontakt in Lexware zusaetzlich die **Leitweg-ID** und **Lieferantennummer** eingetragen werden.
 
 ## Bekannte Einschraenkungen
 
