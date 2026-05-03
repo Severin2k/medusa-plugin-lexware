@@ -1,6 +1,6 @@
 {
   "name": "medusa-lexbridge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lexware Office integration for Medusa v2 - automatic invoices, contact management, PDF delivery, credit notes, and more.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
