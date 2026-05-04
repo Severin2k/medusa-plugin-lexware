@@ -22,7 +22,7 @@ class LexwareModuleService extends MedusaService({
   private isPro_: boolean
 
   constructor(_: any, options: LexwarePluginOptions) {
-    super(...arguments)
+    super(_, options)
     this.options_ = {
       invoice_on_order: true,
       payment_term_days: 14,
@@ -1140,7 +1140,7 @@ class LexwareModuleService extends MedusaService({
     }
   }
 
-  async sendTestEmail(logger: any): Promise<{ success: boolean; message: string }> {
+  async sendTestEmail(): Promise<{ success: boolean; message: string }> {
     this.requirePro("E-Mail-Benachrichtigungen")
     const settings = await this.getSettings()
     if (!settings.notification_email) {
